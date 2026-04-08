@@ -31,8 +31,8 @@ Data is structured and securely stored via an **SQLite** database using **SQLAlc
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/family-office-dashboard.git
-   cd family-office-dashboard
+   git clone https://github.com/Unjustcomposer/Family_Office_Portfolio_Tracker.git
+   cd Family_Office_Portfolio_Tracker
    ```
 
 2. **Install dependencies**
