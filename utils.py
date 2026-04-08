@@ -211,7 +211,7 @@ def get_holding_performance(df: pd.DataFrame, side="Asset", base_curr: str = "US
     filtered["Return %"] = (filtered["Gain/Loss"] / filtered["Cost Basis Base"] * 100).round(2)
     return filtered[["id", "Name", "Category", "Currency", "Cost Basis", "Current Value",
                       "Cost Basis Base", "Current Value Base", "Gain/Loss", "Return %"]]\
-        .sort_values("Gain/Loss", ascending=False)
+        .sort_values("Current Value Base", ascending=False)
 
 
 # ============================================================================

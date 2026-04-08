@@ -131,13 +131,31 @@ def fmt(val):
         return str(val)
     base_curr = st.session_state.get("base_currency", "USD")
     sym = {"USD": "$", "INR": "₹", "EUR": "€", "GBP": "£", "JPY": "¥", "AED": "د.إ"}.get(base_curr, "$")
+    
     prefix = f"-{sym}" if val < 0 else sym
     v = abs(val)
-    if v >= 1_000_000:
-        return f"{prefix}{v/1_000_000:,.2f}M"
-    if v >= 1_000:
-        return f"{prefix}{v:,.0f}"
-    return f"{prefix}{v:,.2f}"
+    
+    if base_curr == "INR":
+        # Indian numbering system
+        s = f"{v:,.2f}"
+        parts = s.split(".")
+        main = parts[0].replace(",", "")
+        if len(main) <= 3:
+            res = main
+        else:
+            res = main[-3:]
+            main = main[:-3]
+            while len(main) > 0:
+                res = main[-2:] + "," + res
+                main = main[:-2]
+        return f"{prefix}{res}.{parts[1]}"
+    else:
+        # Western system
+        if v >= 1_000_000:
+            return f"{prefix}{v/1_000_000:,.2f}M"
+        if v >= 1_000:
+            return f"{prefix}{v:,.0f}"
+        return f"{prefix}{v:,.2f}"
 
 
 def save():
@@ -210,6 +228,14 @@ with st.sidebar:
 
     st.markdown("---")
     st.session_state.base_currency = st.selectbox("Base Currency", utils.CURRENCIES, index=utils.CURRENCIES.index(st.session_state.get("base_currency", "INR")))
+    
+    st.markdown("---")
+    st.markdown("#### 🛠️ View Controls")
+    st.session_state.top_n = st.slider("Show Top Drivers", min_value=3, max_value=20, value=st.session_state.get("top_n", 5))
+    
+    all_cats = sorted(utils.ASSET_CATEGORIES + utils.LIABILITY_CATEGORIES)
+    st.session_state.cat_filter = st.multiselect("Filter by Category", all_cats, default=[])
+
     summary_side = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
     st.metric("Net Worth", fmt(summary_side["net_worth"]))
     st.metric("Total Assets", fmt(summary_side["total_assets"]))
@@ -223,6 +249,13 @@ if page == "🏠 Dashboard":
     st.title("🏠 Portfolio Dashboard")
 
     summary = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
+    
+    # Apply category filter if set
+    df_filtered = st.session_state.portfolio.copy()
+    if st.session_state.get("cat_filter"):
+        df_filtered = df_filtered[df_filtered["Category"].isin(st.session_state.cat_filter)]
+        summary = utils.calculate_portfolio_summary(df_filtered, st.session_state.base_currency)
+
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("🏛️ Net Worth", fmt(summary["net_worth"]))
     m2.metric("📈 Total Assets", fmt(summary["total_assets"]))
@@ -239,28 +272,22 @@ if page == "🏠 Dashboard":
     else:
         col_l, col_r = st.columns(2)
 
-        # --- LEFT: Asset Sunburst ---
+        # --- LEFT: Asset Treemap (Square Chart) ---
         with col_l:
-            st.subheader("Asset Allocation")
-            assets_df = st.session_state.portfolio[st.session_state.portfolio["Side"] == "Asset"].copy()
+            st.subheader("Asset Allocation (Treemap)")
+            assets_df = df_filtered[df_filtered["Side"] == "Asset"].copy()
             if not assets_df.empty:
                 assets_df["Root"] = "Assets"
-                assets_df["Current Value Base"] = utils.normalize_to_base(assets_df, st.session_state.base_currency)["Current Value Base"]
-                fig = px.sunburst(
+                assets_df = utils.normalize_to_base(assets_df, st.session_state.base_currency)
+                fig = px.treemap(
                     assets_df, path=["Root", "Category", "Name"],
                     values="Current Value Base",
                     color="Current Value Base",
-                    color_continuous_scale=["#2c2c54", "#667eea", "#764ba2", "#d0bbff"],
-                    hover_data={"Current Value Base": ":$,.0f"},
-                )
-                fig.update_traces(
-                    textinfo="label+percent entry",
-                    hovertemplate="<b>%{label}</b><br>Value: $%{value:,.0f}<extra></extra>",
-                    marker=dict(line=dict(width=0))
+                    color_continuous_scale=["#1a1a2e", "#667eea", "#764ba2"],
                 )
                 fig.update_layout(height=400, coloraxis_showscale=False, **chart_layout())
                 st.plotly_chart(fig, use_container_width=True)
-                st.caption("✨ Click a category to drill down.")
+                st.caption("✨ Size indicates relative market value.")
 
         # --- RIGHT: Donut ---
         with col_r:
@@ -290,15 +317,20 @@ if page == "🏠 Dashboard":
         tab_a, tab_l = st.tabs(["💼 Assets", "📋 Liabilities"])
 
         def render_holdings_table(side):
-            df_side = st.session_state.portfolio[st.session_state.portfolio["Side"] == side].copy()
+            df_side = df_filtered[df_filtered["Side"] == side].copy()
             if df_side.empty:
                 st.info(f"No {side.lower()}s recorded.")
                 return
             df_usd = utils.normalize_to_base(df_side, st.session_state.base_currency)
             df_usd["Gain/Loss (Base)"] = (df_usd["Current Value Base"] - df_usd["Cost Basis Base"]).round(2)
             df_usd["Return %"] = ((df_usd["Gain/Loss (Base)"] / df_usd["Cost Basis Base"]) * 100).round(1)
+            
+            # Sort by Current Value Base Descending
+            df_usd = df_usd.sort_values("Current Value Base", ascending=False)
+            top_n = st.session_state.get("top_n", 5)
+            
             display = df_usd[["Name", "Category", "Currency", "Cost Basis", "Current Value",
-                               "Gain/Loss (Base)", "Return %", "Date Added", "Notes"]].copy()
+                               "Gain/Loss (Base)", "Return %", "Date Added", "Notes"]].head(top_n).copy()
             for c in ["Cost Basis", "Current Value"]:
                 display[c] = display[c].apply(lambda x: f"{x:,.2f}")
             st.dataframe(display, use_container_width=True, hide_index=True)
@@ -312,23 +344,34 @@ if page == "🏠 Dashboard":
         snaps_df = utils.get_snapshots_df()
         if not snaps_df.empty:
             st.markdown("---")
-            st.subheader("📈 Net Worth History")
+            st.subheader("📈 Net Worth Growth History")
             fig_nw = go.Figure()
+            
+            # Use smoother lines and area fill
             fig_nw.add_trace(go.Scatter(
                 x=snaps_df["date"], y=snaps_df["net_worth"],
                 mode="lines+markers", name="Net Worth",
-                line=dict(color="#667eea", width=2.5),
-                fill="tozeroy", fillcolor="rgba(102,126,234,0.12)"
+                line=dict(color="#667eea", width=4, shape="spline"),
+                fill="tozeroy", fillcolor="rgba(102,126,234,0.15)"
             ))
+            
             fig_nw.add_trace(go.Scatter(
                 x=snaps_df["date"], y=snaps_df["total_assets"],
-                mode="lines", name="Assets", line=dict(color="#2ecc71", width=1.5, dash="dot")))
+                mode="lines", name="Total Assets", 
+                line=dict(color="#2ecc71", width=2, dash="dot", shape="spline")))
+            
             fig_nw.add_trace(go.Scatter(
                 x=snaps_df["date"], y=snaps_df["total_liabilities"],
-                mode="lines", name="Liabilities", line=dict(color="#e74c3c", width=1.5, dash="dot")))
-            fig_nw.update_layout(height=300, yaxis_title=st.session_state.base_currency,
-                                  legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
-                                  **chart_layout())
+                mode="lines", name="Total Liabilities", 
+                line=dict(color="#e74c3c", width=2, dash="dot", shape="spline")))
+            
+            fig_nw.update_layout(
+                height=400, 
+                yaxis_title=st.session_state.base_currency,
+                hovermode="x unified",
+                legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
+                **chart_layout(margin=dict(t=30, b=50, l=20, r=20))
+            )
             st.plotly_chart(fig_nw, use_container_width=True)
 
 # ============================================================================
@@ -497,6 +540,11 @@ elif page == "📊 Analytics":
             if perf.empty:
                 st.info("No asset data.")
             else:
+                top_n = st.session_state.get("top_n", 5)
+                # Sort by absolute gain/loss for top drivers
+                perf["AbsGain"] = perf["Gain/Loss"].abs()
+                perf = perf.sort_values("AbsGain", ascending=False).head(top_n)
+                
                 colors = ["#2ecc71" if v >= 0 else "#e74c3c" for v in perf["Gain/Loss"]]
                 fig = go.Figure(go.Bar(
                     x=perf["Name"], y=perf["Gain/Loss"],
@@ -504,7 +552,7 @@ elif page == "📊 Analytics":
                     text=perf["Gain/Loss"].apply(lambda v: fmt(v)),
                     textposition="outside"
                 ))
-                fig.update_layout(title="Unrealised Gain/Loss per Asset",
+                fig.update_layout(title=f"Top {top_n} P&L Drivers (Base)",
                                    height=450, xaxis_tickangle=-45,
                                    **chart_layout(margin=dict(t=50, b=140, l=20, r=20)))
                 st.plotly_chart(fig, use_container_width=True)
@@ -526,6 +574,9 @@ elif page == "📊 Analytics":
             if liab_perf.empty:
                 st.info("No liabilities. Debt-free! 🎉")
             else:
+                top_n = st.session_state.get("top_n", 5)
+                liab_perf = liab_perf.sort_values("Current Value Base", ascending=False).head(top_n)
+                
                 liab_alloc = utils.get_allocation_summary(st.session_state.portfolio, "Liability", st.session_state.base_currency)
                 col1, col2 = st.columns(2)
                 with col1:
@@ -545,7 +596,7 @@ elif page == "📊 Analytics":
                         go.Bar(name="Outstanding", x=liab_perf["Name"],
                                y=liab_perf["Current Value Base"], marker_color="#e74c3c"),
                     ])
-                    fig2.update_layout(title="Principal vs Outstanding", barmode="group",
+                    fig2.update_layout(title=f"Top {top_n} Debt Drivers", barmode="group",
                                         height=420, xaxis_tickangle=-40,
                                         legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
                                         **chart_layout(margin=dict(t=50, b=130, l=20, r=20)))
@@ -559,19 +610,23 @@ elif page == "📊 Analytics":
             if assets_df.empty:
                 st.info("No assets.")
             else:
-                assets_df["XIRR %"] = assets_df.apply(
+                assets_df["XIRR_raw"] = assets_df.apply(
                     lambda r: utils.compute_xirr(float(r["Cost Basis"]), float(r["Current Value"]), r["Date Added"]),
                     axis=1
                 )
+                assets_df["XIRR %"] = assets_df["XIRR_raw"].apply(lambda x: f"{x:+.2f}%")
                 assets_df["Held Since"] = assets_df["Date Added"]
                 assets_df["Years Held"] = assets_df["Date Added"].apply(
                     lambda d: round((datetime.now() - pd.to_datetime(d)).days / 365.25, 1) if d else 0
                 )
-                display = assets_df[["Name", "Category", "Held Since", "Years Held",
-                                      "Cost Basis", "Current Value", "XIRR %"]].copy()
+                
+                # Sort by XIRR raw descending
+                display = assets_df.sort_values("XIRR_raw", ascending=False)[
+                    ["Name", "Category", "Held Since", "Years Held", "Cost Basis", "Current Value", "XIRR %"]
+                ].copy()
+                
                 for c in ["Cost Basis", "Current Value"]:
-                    display[c] = display[c].apply(lambda x: f"${float(x):,.2f}")
-                display["XIRR %"] = display["XIRR %"].apply(lambda x: f"{x:+.2f}%")
+                    display[c] = display[c].apply(lambda x: fmt(float(x)))
                 st.dataframe(display, use_container_width=True, hide_index=True)
 
 # ============================================================================
@@ -600,6 +655,8 @@ elif page == "🔮 Risk & Forecasting":
             
             if getattr(st.session_state, "_risk_metrics", None) is not None:
                 metrics = st.session_state._risk_metrics
+                # Sort by highest volatility
+                metrics = metrics.sort_values("Volatility (%)", ascending=False)
                 st.dataframe(metrics, use_container_width=True, hide_index=True)
                 
                 st.markdown("---")
@@ -882,7 +939,7 @@ elif page == "💾 Data Management":
         if st.session_state.portfolio.empty:
             st.info("Nothing to export.")
         else:
-            st.dataframe(st.session_state.portfolio.head(10), use_container_width=True, hide_index=True)
+            st.dataframe(st.session_state.portfolio, use_container_width=True, hide_index=True)
             csv = st.session_state.portfolio.to_csv(index=False)
             st.download_button(
                 "⬇️ Download CSV",
