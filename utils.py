@@ -14,6 +14,7 @@ SNAPSHOTS_FILE = "snapshots.json"
 
 ASSET_CATEGORIES = [
     "Public Equity",
+    "Indian Equity",
     "Private Equity",
     "Gold & Precious Metals",
     "Loans (Given)",
@@ -23,6 +24,7 @@ ASSET_CATEGORIES = [
     "Cash & Equivalents",
     "Cryptocurrency",
     "Hedge Funds",
+    "Forex Management",
     "Other Assets",
 ]
 LIABILITY_CATEGORIES = [
@@ -141,34 +143,34 @@ def delete_holding(df, holding_id) -> pd.DataFrame:
 # ============================================================================
 # CURRENCY CONVERSION
 # ============================================================================
-def to_usd(value: float, currency: str) -> float:
-    """Convert a value from its native currency to USD."""
-    rate = FX_TO_USD.get(currency, 1.0)
-    return value * rate
+def to_base_currency(value: float, currency: str, base_curr: str) -> float:
+    """Convert a value from its native currency to the target base currency."""
+    rate_usd = FX_TO_USD.get(currency, 1.0)
+    base_usd = FX_TO_USD.get(base_curr, 1.0)
+    return value * (rate_usd / base_usd)
 
-
-def normalize_to_usd(df: pd.DataFrame) -> pd.DataFrame:
-    """Add USD-normalised columns to the DataFrame."""
+def normalize_to_base(df: pd.DataFrame, base_curr: str = "USD") -> pd.DataFrame:
+    """Add base currency normalised columns to the DataFrame."""
     df = df.copy()
-    df["Cost Basis USD"] = df.apply(lambda r: to_usd(r["Cost Basis"], r.get("Currency", "USD")), axis=1)
-    df["Current Value USD"] = df.apply(lambda r: to_usd(r["Current Value"], r.get("Currency", "USD")), axis=1)
+    df["Cost Basis Base"] = df.apply(lambda r: to_base_currency(r["Cost Basis"], r.get("Currency", "USD"), base_curr), axis=1)
+    df["Current Value Base"] = df.apply(lambda r: to_base_currency(r["Current Value"], r.get("Currency", "USD"), base_curr), axis=1)
     return df
 
 
 # ============================================================================
 # PORTFOLIO CALCULATIONS
 # ============================================================================
-def calculate_portfolio_summary(df: pd.DataFrame) -> dict:
-    """Return core KPIs, always in USD."""
+def calculate_portfolio_summary(df: pd.DataFrame, base_curr: str = "USD") -> dict:
+    """Return core KPIs, always in base currency."""
     if df.empty:
         return dict(total_assets=0, total_liabilities=0, net_worth=0,
                     total_invested=0, total_return=0, return_pct=0)
-    df_usd = normalize_to_usd(df)
-    assets = df_usd[df_usd["Side"] == "Asset"]
-    liabs = df_usd[df_usd["Side"] == "Liability"]
-    total_assets = assets["Current Value USD"].sum()
-    total_invested = assets["Cost Basis USD"].sum()
-    total_liabilities = liabs["Current Value USD"].sum()
+    df_base = normalize_to_base(df, base_curr)
+    assets = df_base[df_base["Side"] == "Asset"]
+    liabs = df_base[df_base["Side"] == "Liability"]
+    total_assets = assets["Current Value Base"].sum()
+    total_invested = assets["Cost Basis Base"].sum()
+    total_liabilities = liabs["Current Value Base"].sum()
     net_worth = total_assets - total_liabilities
     total_return = total_assets - total_invested
     return_pct = (total_return / total_invested * 100) if total_invested > 0 else 0
@@ -177,18 +179,18 @@ def calculate_portfolio_summary(df: pd.DataFrame) -> dict:
                 total_return=total_return, return_pct=return_pct)
 
 
-def get_allocation_summary(df: pd.DataFrame, side="Asset") -> pd.DataFrame:
-    """Group by Category, aggregated in USD."""
+def get_allocation_summary(df: pd.DataFrame, side="Asset", base_curr: str = "USD") -> pd.DataFrame:
+    """Group by Category, aggregated in base currency."""
     if df.empty:
         return pd.DataFrame()
-    df_usd = normalize_to_usd(df)
-    filtered = df_usd[df_usd["Side"] == side]
+    df_base = normalize_to_base(df, base_curr)
+    filtered = df_base[df_base["Side"] == side]
     if filtered.empty:
         return pd.DataFrame()
     summary = filtered.groupby("Category").agg(
         **{
-            "Current Value": ("Current Value USD", "sum"),
-            "Cost Basis": ("Cost Basis USD", "sum"),
+            "Current Value": ("Current Value Base", "sum"),
+            "Cost Basis": ("Cost Basis Base", "sum"),
             "Holdings": ("Name", "count"),
         }
     ).reset_index()
@@ -197,18 +199,18 @@ def get_allocation_summary(df: pd.DataFrame, side="Asset") -> pd.DataFrame:
     return summary.sort_values("Current Value", ascending=False)
 
 
-def get_holding_performance(df: pd.DataFrame, side="Asset") -> pd.DataFrame:
-    """Per-holding gain/loss in USD."""
+def get_holding_performance(df: pd.DataFrame, side="Asset", base_curr: str = "USD") -> pd.DataFrame:
+    """Per-holding gain/loss in base currency."""
     if df.empty:
         return pd.DataFrame()
-    df_usd = normalize_to_usd(df)
-    filtered = df_usd[df_usd["Side"] == side].copy()
+    df_base = normalize_to_base(df, base_curr)
+    filtered = df_base[df_base["Side"] == side].copy()
     if filtered.empty:
         return pd.DataFrame()
-    filtered["Gain/Loss"] = filtered["Current Value USD"] - filtered["Cost Basis USD"]
-    filtered["Return %"] = (filtered["Gain/Loss"] / filtered["Cost Basis USD"] * 100).round(2)
+    filtered["Gain/Loss"] = filtered["Current Value Base"] - filtered["Cost Basis Base"]
+    filtered["Return %"] = (filtered["Gain/Loss"] / filtered["Cost Basis Base"] * 100).round(2)
     return filtered[["id", "Name", "Category", "Currency", "Cost Basis", "Current Value",
-                      "Cost Basis USD", "Current Value USD", "Gain/Loss", "Return %"]]\
+                      "Cost Basis Base", "Current Value Base", "Gain/Loss", "Return %"]]\
         .sort_values("Gain/Loss", ascending=False)
 
 

@@ -118,6 +118,8 @@ if "advisory_report" not in st.session_state:
     st.session_state.advisory_report = None
 if "advisory_headlines" not in st.session_state:
     st.session_state.advisory_headlines = None
+if "base_currency" not in st.session_state:
+    st.session_state.base_currency = "INR"
 
 # ============================================================================
 # HELPERS
@@ -127,7 +129,9 @@ def fmt(val):
         val = float(val)
     except Exception:
         return str(val)
-    prefix = "-$" if val < 0 else "$"
+    base_curr = st.session_state.get("base_currency", "USD")
+    sym = {"USD": "$", "INR": "₹", "EUR": "€", "GBP": "£", "JPY": "¥", "AED": "د.إ"}.get(base_curr, "$")
+    prefix = f"-{sym}" if val < 0 else sym
     v = abs(val)
     if v >= 1_000_000:
         return f"{prefix}{v/1_000_000:,.2f}M"
@@ -183,13 +187,19 @@ with st.sidebar:
                 st.warning("Portfolio is empty.")
 
     if st.button("🔄 Sync Live Prices", use_container_width=True, help="Update via Yahoo Finance"):
-        with st.spinner("Fetching market data..."):
+        with st.spinner("Fetching market data and live FX rates..."):
             updated_df, log = market_data.update_portfolio_prices(st.session_state.portfolio)
+            fx_log = market_data.update_fx_rates()
             st.session_state.portfolio = updated_df
             save()
             updated_count = len([x for x in log if 'error' not in x])
+            msg = []
             if updated_count > 0:
-                st.session_state._price_log = f"✅ Updated prices for {updated_count} holdings."
+                msg.append(f"Updated {updated_count} holdings.")
+            if fx_log:
+                msg.append(f"Updated {len(fx_log)} FX rates.")
+            if msg:
+                st.session_state._price_log = "✅ " + " | ".join(msg)
             else:
                 st.session_state._price_log = "ℹ️ No prices updated. (Check tickers)"
             st.rerun()
@@ -199,11 +209,12 @@ with st.sidebar:
         st.session_state._price_log = None
 
     st.markdown("---")
-    summary_side = utils.calculate_portfolio_summary(st.session_state.portfolio)
+    st.session_state.base_currency = st.selectbox("Base Currency", utils.CURRENCIES, index=utils.CURRENCIES.index(st.session_state.get("base_currency", "INR")))
+    summary_side = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
     st.metric("Net Worth", fmt(summary_side["net_worth"]))
     st.metric("Total Assets", fmt(summary_side["total_assets"]))
     st.metric("Total Liabilities", fmt(summary_side["total_liabilities"]))
-    st.caption("All values displayed in USD.")
+    st.caption(f"All values displayed in {st.session_state.base_currency}.")
 
 # ============================================================================
 # PAGE: DASHBOARD
@@ -211,7 +222,7 @@ with st.sidebar:
 if page == "🏠 Dashboard":
     st.title("🏠 Portfolio Dashboard")
 
-    summary = utils.calculate_portfolio_summary(st.session_state.portfolio)
+    summary = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("🏛️ Net Worth", fmt(summary["net_worth"]))
     m2.metric("📈 Total Assets", fmt(summary["total_assets"]))
@@ -234,13 +245,13 @@ if page == "🏠 Dashboard":
             assets_df = st.session_state.portfolio[st.session_state.portfolio["Side"] == "Asset"].copy()
             if not assets_df.empty:
                 assets_df["Root"] = "Assets"
-                assets_df["Current Value USD"] = utils.normalize_to_usd(assets_df)["Current Value USD"]
+                assets_df["Current Value Base"] = utils.normalize_to_base(assets_df, st.session_state.base_currency)["Current Value Base"]
                 fig = px.sunburst(
                     assets_df, path=["Root", "Category", "Name"],
-                    values="Current Value USD",
-                    color="Current Value USD",
+                    values="Current Value Base",
+                    color="Current Value Base",
                     color_continuous_scale=["#2c2c54", "#667eea", "#764ba2", "#d0bbff"],
-                    hover_data={"Current Value USD": ":$,.0f"},
+                    hover_data={"Current Value Base": ":$,.0f"},
                 )
                 fig.update_traces(
                     textinfo="label+percent entry",
@@ -283,11 +294,11 @@ if page == "🏠 Dashboard":
             if df_side.empty:
                 st.info(f"No {side.lower()}s recorded.")
                 return
-            df_usd = utils.normalize_to_usd(df_side)
-            df_usd["Gain/Loss ($)"] = (df_usd["Current Value USD"] - df_usd["Cost Basis USD"]).round(2)
-            df_usd["Return %"] = ((df_usd["Gain/Loss ($)"] / df_usd["Cost Basis USD"]) * 100).round(1)
+            df_usd = utils.normalize_to_base(df_side, st.session_state.base_currency)
+            df_usd["Gain/Loss (Base)"] = (df_usd["Current Value Base"] - df_usd["Cost Basis Base"]).round(2)
+            df_usd["Return %"] = ((df_usd["Gain/Loss (Base)"] / df_usd["Cost Basis Base"]) * 100).round(1)
             display = df_usd[["Name", "Category", "Currency", "Cost Basis", "Current Value",
-                               "Gain/Loss ($)", "Return %", "Date Added", "Notes"]].copy()
+                               "Gain/Loss (Base)", "Return %", "Date Added", "Notes"]].copy()
             for c in ["Cost Basis", "Current Value"]:
                 display[c] = display[c].apply(lambda x: f"{x:,.2f}")
             st.dataframe(display, use_container_width=True, hide_index=True)
@@ -315,7 +326,7 @@ if page == "🏠 Dashboard":
             fig_nw.add_trace(go.Scatter(
                 x=snaps_df["date"], y=snaps_df["total_liabilities"],
                 mode="lines", name="Liabilities", line=dict(color="#e74c3c", width=1.5, dash="dot")))
-            fig_nw.update_layout(height=300, yaxis_title="USD",
+            fig_nw.update_layout(height=300, yaxis_title=st.session_state.base_currency,
                                   legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
                                   **chart_layout())
             st.plotly_chart(fig_nw, use_container_width=True)
@@ -330,13 +341,12 @@ elif page == "💼 Manage Holdings":
     tab_add, tab_edit = st.tabs(["➕ Add New Holding", "✏️ Edit / Delete"])
 
     with tab_add:
+        # Move type selection outside the form for reactivity
+        side = st.radio("Type *", ["Asset", "Liability"], horizontal=True)
+        
         with st.form("add_form", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                side = st.selectbox("Type *", ["Asset", "Liability"])
-            with c2:
-                cats = utils.ASSET_CATEGORIES if side == "Asset" else utils.LIABILITY_CATEGORIES
-                category = st.selectbox("Category *", cats)
+            cats = utils.ASSET_CATEGORIES if side == "Asset" else utils.LIABILITY_CATEGORIES
+            category = st.selectbox("Category *", cats)
         
             c_name, c_tick = st.columns([2, 1])
             with c_name:
@@ -373,7 +383,7 @@ elif page == "💼 Manage Holdings":
                     st.success(f"✅ {'📈' if side == 'Asset' else '📉'} **{name}** added successfully!")
         
         st.markdown("---")
-        s = utils.calculate_portfolio_summary(st.session_state.portfolio)
+        s = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
         c1, c2, c3 = st.columns(3)
         c1.metric("Net Worth", fmt(s["net_worth"]))
         c2.metric("Total Assets", fmt(s["total_assets"]))
@@ -450,7 +460,7 @@ elif page == "📊 Analytics":
 
         # OVERVIEW
         with tab1:
-            summary = utils.calculate_portfolio_summary(st.session_state.portfolio)
+            summary = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Net Worth", fmt(summary["net_worth"]))
             c2.metric("Total Assets", fmt(summary["total_assets"]))
@@ -459,8 +469,8 @@ elif page == "📊 Analytics":
             st.markdown("---")
 
             # Waterfall
-            alloc_a = utils.get_allocation_summary(st.session_state.portfolio, "Asset")
-            alloc_l = utils.get_allocation_summary(st.session_state.portfolio, "Liability")
+            alloc_a = utils.get_allocation_summary(st.session_state.portfolio, "Asset", st.session_state.base_currency)
+            alloc_l = utils.get_allocation_summary(st.session_state.portfolio, "Liability", st.session_state.base_currency)
             labels, values, measures = [], [], []
             for _, r in alloc_a.iterrows():
                 labels.append(r["Category"]); values.append(r["Current Value"]); measures.append("relative")
@@ -483,7 +493,7 @@ elif page == "📊 Analytics":
 
         # ASSETS
         with tab2:
-            perf = utils.get_holding_performance(st.session_state.portfolio, "Asset")
+            perf = utils.get_holding_performance(st.session_state.portfolio, "Asset", st.session_state.base_currency)
             if perf.empty:
                 st.info("No asset data.")
             else:
@@ -494,12 +504,12 @@ elif page == "📊 Analytics":
                     text=perf["Gain/Loss"].apply(lambda v: fmt(v)),
                     textposition="outside"
                 ))
-                fig.update_layout(title="Unrealised Gain/Loss per Asset (USD)",
+                fig.update_layout(title="Unrealised Gain/Loss per Asset",
                                    height=450, xaxis_tickangle=-45,
                                    **chart_layout(margin=dict(t=50, b=140, l=20, r=20)))
                 st.plotly_chart(fig, use_container_width=True)
 
-                alloc = utils.get_allocation_summary(st.session_state.portfolio, "Asset")
+                alloc = utils.get_allocation_summary(st.session_state.portfolio, "Asset", st.session_state.base_currency)
                 fig2 = px.bar(alloc, x="Category", y="Current Value",
                               color="Return %", color_continuous_scale="RdYlGn",
                               color_continuous_midpoint=0,
@@ -512,11 +522,11 @@ elif page == "📊 Analytics":
 
         # LIABILITIES
         with tab3:
-            liab_perf = utils.get_holding_performance(st.session_state.portfolio, "Liability")
+            liab_perf = utils.get_holding_performance(st.session_state.portfolio, "Liability", st.session_state.base_currency)
             if liab_perf.empty:
                 st.info("No liabilities. Debt-free! 🎉")
             else:
-                liab_alloc = utils.get_allocation_summary(st.session_state.portfolio, "Liability")
+                liab_alloc = utils.get_allocation_summary(st.session_state.portfolio, "Liability", st.session_state.base_currency)
                 col1, col2 = st.columns(2)
                 with col1:
                     fig = px.bar(liab_alloc, x="Category", y="Current Value",
@@ -531,9 +541,9 @@ elif page == "📊 Analytics":
                 with col2:
                     fig2 = go.Figure([
                         go.Bar(name="Principal", x=liab_perf["Name"],
-                               y=liab_perf["Cost Basis USD"], marker_color="rgba(231,76,60,0.35)"),
+                               y=liab_perf["Cost Basis Base"], marker_color="rgba(231,76,60,0.35)"),
                         go.Bar(name="Outstanding", x=liab_perf["Name"],
-                               y=liab_perf["Current Value USD"], marker_color="#e74c3c"),
+                               y=liab_perf["Current Value Base"], marker_color="#e74c3c"),
                     ])
                     fig2.update_layout(title="Principal vs Outstanding", barmode="group",
                                         height=420, xaxis_tickangle=-40,
@@ -607,7 +617,7 @@ elif page == "🔮 Risk & Forecasting":
             
             c1, c2, c3 = st.columns(3)
             with c1:
-                summary = utils.calculate_portfolio_summary(st.session_state.portfolio)
+                summary = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
                 nw = summary.get("net_worth", 0)
                 st.metric("Current Net Worth", fmt(nw))
             with c2:
@@ -645,7 +655,7 @@ elif page == "🔮 Risk & Forecasting":
                             ))
                             
                         fig_mc.update_layout(title="Monte Carlo Projected Net Worth Distribution",
-                                             xaxis_title="Years from Now", yaxis_title="USD",
+                                             xaxis_title="Years from Now", yaxis_title=st.session_state.base_currency,
                                              height=500, **chart_layout())
                         st.plotly_chart(fig_mc, use_container_width=True)
                         
@@ -728,7 +738,7 @@ elif page == "📑 Reports & KPIs":
     if st.session_state.portfolio.empty:
         st.warning("No data. Add holdings first.")
     else:
-        summary = utils.calculate_portfolio_summary(st.session_state.portfolio)
+        summary = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
         leverage = (summary["total_liabilities"] / summary["net_worth"]) if summary["net_worth"] > 0 else 0
         debt_to_assets = (summary["total_liabilities"] / summary["total_assets"]) if summary["total_assets"] > 0 else 0
 
@@ -742,8 +752,8 @@ elif page == "📑 Reports & KPIs":
         k4.metric("Leverage Ratio", f"{leverage:.2f}x")
 
         k5, k6, k7, k8 = st.columns(4)
-        k5.metric("Total Assets (USD)", fmt(summary["total_assets"]))
-        k6.metric("Total Liabilities (USD)", fmt(summary["total_liabilities"]))
+        k5.metric("Total Assets (Base)", fmt(summary["total_assets"]))
+        k6.metric("Total Liabilities (Base)", fmt(summary["total_liabilities"]))
         k7.metric("Debt-to-Assets", f"{debt_to_assets*100:.1f}%")
         holdings_count = len(st.session_state.portfolio)
         asset_count = len(st.session_state.portfolio[st.session_state.portfolio["Side"] == "Asset"])
@@ -752,14 +762,14 @@ elif page == "📑 Reports & KPIs":
         # Asset class table
         st.markdown("---")
         st.subheader("2. Asset Class Performance")
-        alloc_a = utils.get_allocation_summary(st.session_state.portfolio, "Asset")
+        alloc_a = utils.get_allocation_summary(st.session_state.portfolio, "Asset", st.session_state.base_currency)
         if not alloc_a.empty:
             total_av = alloc_a["Current Value"].sum()
             alloc_a["Allocation %"] = (alloc_a["Current Value"] / total_av * 100).round(1)
-            rpt = alloc_a.rename(columns={"Current Value": "Market Value (USD)",
-                                           "Cost Basis": "Capital Deployed (USD)",
+            rpt = alloc_a.rename(columns={"Current Value": "Market Value (Base)",
+                                           "Cost Basis": "Capital Deployed (Base)",
                                            "Holdings": "Count"}).copy()
-            for c in ["Market Value (USD)", "Capital Deployed (USD)", "Gain/Loss"]:
+            for c in ["Market Value (Base)", "Capital Deployed (Base)", "Gain/Loss"]:
                 rpt[c] = rpt[c].apply(lambda x: f"${x:,.0f}")
             rpt["Return %"] = rpt["Return %"].apply(lambda x: f"{x:+.2f}%")
             rpt["Allocation %"] = rpt["Allocation %"].apply(lambda x: f"{x:.1f}%")
@@ -768,13 +778,13 @@ elif page == "📑 Reports & KPIs":
         # Liabilities table
         st.markdown("---")
         st.subheader("3. Liability Summary")
-        alloc_l = utils.get_allocation_summary(st.session_state.portfolio, "Liability")
+        alloc_l = utils.get_allocation_summary(st.session_state.portfolio, "Liability", st.session_state.base_currency)
         if not alloc_l.empty:
-            lrpt = alloc_l.rename(columns={"Current Value": "Outstanding (USD)",
-                                            "Cost Basis": "Original Principal (USD)",
+            lrpt = alloc_l.rename(columns={"Current Value": "Outstanding (Base)",
+                                            "Cost Basis": "Original Principal (Base)",
                                             "Holdings": "Count"})[
-                ["Category", "Count", "Outstanding (USD)", "Original Principal (USD)"]].copy()
-            for c in ["Outstanding (USD)", "Original Principal (USD)"]:
+                ["Category", "Count", "Outstanding (Base)", "Original Principal (Base)"]].copy()
+            for c in ["Outstanding (Base)", "Original Principal (Base)"]:
                 lrpt[c] = lrpt[c].apply(lambda x: f"${x:,.0f}")
             st.dataframe(lrpt, use_container_width=True, hide_index=True)
         else:
@@ -790,7 +800,7 @@ elif page == "📑 Reports & KPIs":
                                          mode="lines+markers", name="Net Worth",
                                          line=dict(color="#667eea", width=2.5),
                                          fill="tozeroy", fillcolor="rgba(102,126,234,0.12)"))
-            fig_nw.update_layout(height=320, yaxis_title="USD",
+            fig_nw.update_layout(height=320, yaxis_title=st.session_state.base_currency,
                                   **chart_layout(margin=dict(t=30, b=30, l=20, r=20)))
             st.plotly_chart(fig_nw, use_container_width=True)
 
@@ -807,7 +817,7 @@ elif page == "🧠 AI Advisory":
     if st.session_state.portfolio.empty:
         st.warning("Portfolio is empty. Add holdings to receive advice.")
     else:
-        summary = utils.calculate_portfolio_summary(st.session_state.portfolio)
+        summary = utils.calculate_portfolio_summary(st.session_state.portfolio, st.session_state.base_currency)
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Net Worth", fmt(summary["net_worth"]))
         c2.metric("Total Assets", fmt(summary["total_assets"]))
@@ -823,7 +833,7 @@ elif page == "🧠 AI Advisory":
         if st.button("🚀 Generate Advisory Report", use_container_width=True, type="primary"):
             with st.spinner("🧠 Fetching live news and analysing portfolio..."):
                 headlines = ai_advisor.fetch_news_headlines(5)
-                report = ai_advisor.generate_advisory_report(st.session_state.portfolio, headlines)
+                report = ai_advisor.generate_advisory_report(st.session_state.portfolio, headlines, st.session_state.base_currency)
                 st.session_state.advisory_report = report
                 st.session_state.advisory_headlines = headlines
 
@@ -835,7 +845,7 @@ elif page == "🧠 AI Advisory":
             # Concentration Heatmap
             st.markdown("---")
             st.subheader("🎯 Concentration Risk Heatmap")
-            alloc = utils.get_allocation_summary(st.session_state.portfolio, "Asset")
+            alloc = utils.get_allocation_summary(st.session_state.portfolio, "Asset", st.session_state.base_currency)
             if not alloc.empty:
                 total_v = alloc["Current Value"].sum()
                 alloc["Pct"] = (alloc["Current Value"] / total_v * 100).round(1)

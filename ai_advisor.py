@@ -66,10 +66,14 @@ INVESTMENT_IDEAS = [
      "reason": "E-commerce secular growth ensures sustained demand for high-quality warehouse space."},
     {"name": "Invoice Discounting Platform", "category": "Loans (Given)",
      "reason": "15-18% annualised yield. Short tenor (30-90 days) keeps liquidity risk manageable."},
+    {"name": "Currency Carry Trade / Yield Optimization", "category": "Forex Management",
+     "reason": "Exploit positive interest rate differentials between major central bank currencies."},
+    {"name": "Long USD / Emerging Markets Hedge", "category": "Forex Management",
+     "reason": "Protect purchasing power during periods of heightened global risk-off sentiment."}
 ]
 
 
-def generate_advisory_report(portfolio_df, headlines: list[str] = None) -> str:
+def generate_advisory_report(portfolio_df, headlines: list[str] = None, base_curr: str = "USD") -> str:
     """
     Generate a comprehensive advisory report based on portfolio state and news context.
     Returns a markdown-formatted string.
@@ -80,17 +84,17 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None) -> str:
     # Import here to avoid circular imports
     import utils
 
-    df_usd = utils.normalize_to_usd(portfolio_df)
-    summary = utils.calculate_portfolio_summary(portfolio_df)
+    df_base = utils.normalize_to_base(portfolio_df, base_curr)
+    summary = utils.calculate_portfolio_summary(portfolio_df, base_curr)
 
-    assets = df_usd[df_usd["Side"] == "Asset"].copy()
-    liabs = df_usd[df_usd["Side"] == "Liability"].copy()
+    assets = df_base[df_base["Side"] == "Asset"].copy()
+    liabs = df_base[df_base["Side"] == "Liability"].copy()
 
     if assets.empty:
         return "⚠️ **No assets tracked.** Add investments to receive advisory."
 
     # Cash metrics
-    cash = assets[assets["Category"] == "Cash & Equivalents"]["Current Value USD"].sum()
+    cash = assets[assets["Category"] == "Cash & Equivalents"]["Current Value Base"].sum()
     cash_pct = (cash / summary["total_assets"] * 100) if summary["total_assets"] > 0 else 0
 
     # Fetch news
@@ -98,12 +102,12 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None) -> str:
         headlines = fetch_news_headlines(5)
 
     # Best gainer
-    assets["Gain"] = assets["Current Value USD"] - assets["Cost Basis USD"]
+    assets["Gain"] = assets["Current Value Base"] - assets["Cost Basis Base"]
     top_gainer = assets.nlargest(1, "Gain").iloc[0]
 
     # Biggest concentration
     from utils import get_allocation_summary
-    alloc = get_allocation_summary(portfolio_df, "Asset")
+    alloc = get_allocation_summary(portfolio_df, "Asset", base_curr)
     total_val = alloc["Current Value"].sum()
     alloc["Pct"] = alloc["Current Value"] / total_val * 100
     overweight = alloc[alloc["Pct"] > 30]
@@ -132,8 +136,9 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None) -> str:
     report.append("")
 
     # Section 2: Liquidity
+    sym = {"USD": "$", "INR": "₹", "EUR": "€", "GBP": "£", "JPY": "¥", "AED": "د.إ"}.get(base_curr, "$")
     report.append("### 💧 Liquidity Assessment")
-    report.append(f"**Cash & Equivalents:** ${cash:,.0f} ({cash_pct:.1f}% of total assets)")
+    report.append(f"**Cash & Equivalents:** {sym}{cash:,.0f} ({cash_pct:.1f}% of total assets)")
     if cash_pct < 5:
         report.append("🔴 **Critical:** Cash buffer is dangerously low (<5%). Consider liquidating some short-term positions to build reserves for market opportunities.")
     elif cash_pct < 10:
@@ -157,9 +162,9 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None) -> str:
     report.append("### 📉 Liquidation Recommendation")
     if top_gainer["Gain"] > 0:
         reason = random.choice(LIQUIDATION_REASONS)
-        gain_pct = (top_gainer["Gain"] / top_gainer["Cost Basis USD"] * 100) if top_gainer["Cost Basis USD"] > 0 else 0
+        gain_pct = (top_gainer["Gain"] / top_gainer["Cost Basis Base"] * 100) if top_gainer["Cost Basis Base"] > 0 else 0
         report.append(f"**Consider trimming:** {top_gainer['Name']} (*{top_gainer['Category']}*)")
-        report.append(f"- Unrealised Gain: **${top_gainer['Gain']:,.0f}** ({gain_pct:+.1f}%)")
+        report.append(f"- Unrealised Gain: **{sym}{top_gainer['Gain']:,.0f}** ({gain_pct:+.1f}%)")
         report.append(f"- Rationale: This holding {reason} A 20-30% trim is recommended to lock in profits.")
     else:
         report.append("No strong liquidation candidates identified at this time. Most positions are near or below cost basis.")
@@ -170,17 +175,26 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None) -> str:
     
     # Mathematical adjustment of text based on sentiment score
     if avg_sentiment < -0.15:
-        report.append(f"Given the **Bearish** market sentiment ({avg_sentiment:.2f}), the AI model emphasizes defensive posturing and capital preservation. Based on your ${cash:,.0f} available cash:")
+        report.append(f"Given the **Bearish** market sentiment ({avg_sentiment:.2f}), the AI model emphasizes defensive posturing and capital preservation. Based on your {sym}{cash:,.0f} available cash:")
     elif avg_sentiment > 0.15:
-        report.append(f"Given the **Bullish** market sentiment ({avg_sentiment:.2f}), the AI model is optimizing for growth capture. Based on your ${cash:,.0f} available cash:")
+        report.append(f"Given the **Bullish** market sentiment ({avg_sentiment:.2f}), the AI model is optimizing for growth capture. Based on your {sym}{cash:,.0f} available cash:")
     else:
-        report.append(f"With macro sentiment appearing **Neutral** ({avg_sentiment:.2f}), the AI model maintains standard allocation logic. Based on your ${cash:,.0f} available cash:")
+        report.append(f"With macro sentiment appearing **Neutral** ({avg_sentiment:.2f}), the AI model maintains standard allocation logic. Based on your {sym}{cash:,.0f} available cash:")
     
     ideas = random.sample(INVESTMENT_IDEAS, 3)
     for i, inv in enumerate(ideas, 1):
         report.append(f"{i}. **{inv['name']}** — *{inv['category']}*")
         report.append(f"   > {inv['reason']}")
     report.append("")
+
+    # Section: Forex Advisory
+    forex_holdings = assets[assets["Category"] == "Forex Management"]
+    if not forex_holdings.empty:
+        report.append("### 💱 Forex Management Advisory")
+        report.append("Based on current macro volatility and your active forex exposures:")
+        for _, row in forex_holdings.iterrows():
+            report.append(f"- **{row['Name']}** ({row['Currency']}): Consider setting strict stop-losses given recent FX cross-rate swings. Carry trade returns may face headwinds if central bank rates pivot.")
+        report.append("")
 
     # Liability note
     leverage = (summary["total_liabilities"] / summary["net_worth"]) if summary["net_worth"] > 0 else 0

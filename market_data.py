@@ -135,3 +135,29 @@ def update_portfolio_prices(df):
             })
 
     return df, log
+
+def update_fx_rates():
+    """Update live FX rates using yfinance, writing directly to utils.FX_TO_USD."""
+    import utils
+    log = []
+    for curr in utils.CURRENCIES:
+        if curr == "USD":
+            continue
+        ticker = f"{curr}USD=X"
+        data = fetch_price(ticker)
+        
+        if not data or not data.get("price") or data.get("error"):
+            # try fallback
+            inv_ticker = f"USD{curr}=X"
+            inv_data = fetch_price(inv_ticker)
+            if inv_data and inv_data.get("price") and not inv_data.get("error"):
+                old_rate = utils.FX_TO_USD.get(curr, 1.0)
+                new_rate = 1.0 / inv_data["price"]
+                utils.FX_TO_USD[curr] = new_rate
+                log.append({"currency": curr, "old": old_rate, "new": new_rate})
+        elif data and data.get("price") and not data.get("error"):
+            old_rate = utils.FX_TO_USD.get(curr, 1.0)
+            utils.FX_TO_USD[curr] = data["price"]
+            log.append({"currency": curr, "old": old_rate, "new": data["price"]})
+            
+    return log

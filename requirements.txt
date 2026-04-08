@@ -1,7 +1,11 @@
 streamlit
 pandas
 plotly
-openpyxl
+numpy
+yfinance
 feedparser
+vaderSentiment
+SQLAlchemy
 scipy
+openpyxl
 reportlab
