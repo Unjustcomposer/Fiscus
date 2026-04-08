@@ -1,0 +1,56 @@
+{
+  "AAPL": {
+    "ticker": "AAPL",
+    "price": 253.5,
+    "currency": "USD",
+    "name": "Apple Inc.",
+    "change_pct": -2.07,
+    "fetched_at": "2026-04-08T10:57:04.628479",
+    "source": "Yahoo Finance"
+  },
+  "TSLA": {
+    "ticker": "TSLA",
+    "price": 346.65,
+    "currency": "USD",
+    "name": "Tesla, Inc.",
+    "change_pct": -1.75,
+    "fetched_at": "2026-04-08T10:57:05.416700",
+    "source": "Yahoo Finance"
+  },
+  "GLD": {
+    "ticker": "GLD",
+    "price": 431.81,
+    "currency": "USD",
+    "name": "SPDR Gold Shares",
+    "change_pct": 0.97,
+    "fetched_at": "2026-04-08T10:57:06.218106",
+    "source": "Yahoo Finance"
+  },
+  "SLV": {
+    "ticker": "SLV",
+    "price": 65.94,
+    "currency": "USD",
+    "name": "iShares Silver Trust",
+    "change_pct": -0.23,
+    "fetched_at": "2026-04-08T10:57:07.038598",
+    "source": "Yahoo Finance"
+  },
+  "BTC-USD": {
+    "ticker": "BTC-USD",
+    "price": 71738.625,
+    "currency": "USD",
+    "name": "Bitcoin USD",
+    "change_pct": -0.26,
+    "fetched_at": "2026-04-08T10:57:07.819161",
+    "source": "Yahoo Finance"
+  },
+  "ETH-USD": {
+    "ticker": "ETH-USD",
+    "price": 2243.4517,
+    "currency": "USD",
+    "name": "Ethereum USD",
+    "change_pct": 0.16,
+    "fetched_at": "2026-04-08T10:57:08.788584",
+    "source": "Yahoo Finance"
+  }
+}
