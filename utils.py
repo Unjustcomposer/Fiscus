@@ -1,4 +1,4 @@
-# utils.py — Family Office Portfolio Dashboard
+﻿# utils.py — Family Office Portfolio Dashboard
 # Core data layer: persistence, CRUD, calculations, snapshots, XIRR
 
 import pandas as pd
@@ -240,24 +240,77 @@ def compute_xirr(cost_basis: float, current_value: float, date_added_str: str) -
 def generate_sample_portfolio() -> pd.DataFrame:
     df = create_empty_dataframe()
     assets = [
-        ("Apple Inc.", "AAPL", "Public Equity", 500, 75000, 95000, "Tech large-cap", "USD", "2022-01-15"),
-        ("Tesla Inc.", "TSLA", "Public Equity", 200, 50000, 48000, "EV sector", "USD", "2021-06-01"),
-        ("Reliance Industries", "", "Public Equity", 1000, 10000000, 12000000, "Indian conglomerate", "INR", "2020-03-10"),
-        ("Acme Growth Fund III", "", "Private Equity", 1, 250000, 310000, "Series B stage fund", "USD", "2021-09-01"),
-        ("HealthTech Ventures", "", "Private Equity", 1, 100000, 85000, "Early-stage healthtech", "USD", "2022-07-15"),
-        ("Gold Bars (1kg)", "GLD", "Gold & Precious Metals", 5, 300000, 375000, "Physical gold", "USD", "2019-11-01"),
-        ("Silver Coins", "SLV", "Gold & Precious Metals", 200, 5000, 6200, "Collectible silver", "USD", "2020-05-20"),
-        ("Loan to XYZ Corp", "", "Loans (Given)", 1, 500000, 520000, "12% annual, matures 2027", "USD", "2023-01-01"),
-        ("Personal Loan – Family", "", "Loans (Given)", 1, 200000, 200000, "Interest-free", "USD", "2023-06-01"),
-        ("Monet Print", "", "Art & Collectibles", 1, 80000, 120000, "Authenticated, insured", "USD", "2018-04-10"),
-        ("Vintage Rolex Daytona", "", "Art & Collectibles", 1, 25000, 45000, "1969, excellent condition", "USD", "2019-02-15"),
-        ("Downtown Office Space", "", "Real Estate", 1, 125000000, 150000000, "Rental ₹4L/mo", "INR", "2015-08-01"),
-        ("Beach Villa, Goa", "", "Real Estate", 1, 65000000, 79000000, "Vacation property", "INR", "2017-12-01"),
-        ("US Treasury Bonds", "", "Fixed Income & Bonds", 100, 100000, 102000, "10Y T-bonds", "USD", "2022-10-01"),
-        ("Corporate FD", "", "Fixed Income & Bonds", 1, 5000000, 5360000, "7.5% locked 3yr", "INR", "2021-03-01"),
-        ("Savings Account", "", "Cash & Equivalents", 1, 350000, 350000, "HDFC Bank", "USD", "2020-01-01"),
-        ("Bitcoin (BTC)", "BTC-USD", "Cryptocurrency", 2, 60000, 72000, "Cold wallet", "USD", "2020-10-15"),
-        ("Ethereum (ETH)", "ETH-USD", "Cryptocurrency", 15, 30000, 27000, "Staked", "USD", "2021-01-20"),
+        # ── PUBLIC EQUITY — US Large Cap ──
+        ("Apple Inc.", "AAPL", "Public Equity", 800, 120000, 156000, "Core tech holding", "USD", "2021-03-15"),
+        ("Microsoft Corp.", "MSFT", "Public Equity", 400, 100000, 168000, "Cloud + AI play", "USD", "2020-11-10"),
+        ("NVIDIA Corp.", "NVDA", "Public Equity", 300, 45000, 126000, "GPU/AI dominance", "USD", "2022-01-20"),
+        ("Amazon.com", "AMZN", "Public Equity", 600, 90000, 114000, "E-commerce + AWS", "USD", "2021-06-05"),
+        ("Alphabet Inc.", "GOOGL", "Public Equity", 250, 62500, 87500, "Search + Cloud", "USD", "2021-09-01"),
+        ("Tesla Inc.", "TSLA", "Public Equity", 500, 125000, 95000, "EV sector, volatile", "USD", "2021-11-15"),
+        ("Meta Platforms", "META", "Public Equity", 200, 50000, 96000, "Social + Metaverse", "USD", "2022-06-01"),
+        ("JPMorgan Chase", "JPM", "Public Equity", 350, 49000, 73500, "Banking leader", "USD", "2020-04-01"),
+        ("Johnson & Johnson", "JNJ", "Public Equity", 400, 60000, 62000, "Healthcare stable", "USD", "2019-08-15"),
+        ("Berkshire Hathaway B", "BRK-B", "Public Equity", 100, 25000, 46200, "Value investing", "USD", "2018-12-01"),
+        # ── PUBLIC EQUITY — Growth / Momentum ──
+        ("Palantir Technologies", "PLTR", "Public Equity", 2000, 20000, 48600, "AI/Data analytics", "USD", "2023-01-10"),
+        ("AMD", "AMD", "Public Equity", 500, 37500, 52500, "Semiconductor", "USD", "2022-05-20"),
+        ("Costco Wholesale", "COST", "Public Equity", 50, 25000, 45000, "Retail defensive", "USD", "2021-02-14"),
+        # ── INDIAN EQUITY ──
+        ("Reliance Industries", "RELIANCE.NS", "Indian Equity", 2000, 20000000, 28000000, "Indian conglomerate", "INR", "2020-03-10"),
+        ("HDFC Bank", "HDFCBANK.NS", "Indian Equity", 3000, 4500000, 5100000, "Premier bank", "INR", "2021-01-15"),
+        ("Infosys Ltd.", "INFY", "Indian Equity", 1500, 2250000, 2700000, "IT services", "INR", "2020-06-20"),
+        ("TCS", "TCS.NS", "Indian Equity", 800, 2800000, 3200000, "IT services giant", "INR", "2019-09-01"),
+        ("Bajaj Finance", "BAJFINANCE.NS", "Indian Equity", 500, 3500000, 4100000, "NBFC leader", "INR", "2021-04-01"),
+        # ── PRIVATE EQUITY ──
+        ("Acme Growth Fund III", "", "Private Equity", 1, 250000, 340000, "Series B stage fund, 2.1x MOIC", "USD", "2021-09-01"),
+        ("HealthTech Ventures LP", "", "Private Equity", 1, 150000, 115000, "Early-stage healthtech, J-curve", "USD", "2022-07-15"),
+        ("Sequoia Capital India Fund", "", "Private Equity", 1, 500000, 720000, "India venture fund", "USD", "2020-01-15"),
+        ("Tiger Global Private Fund", "", "Private Equity", 1, 300000, 255000, "Growth equity, marked down", "USD", "2021-12-01"),
+        ("Real Estate PE Fund II", "", "Private Equity", 1, 200000, 278000, "Commercial RE fund", "USD", "2019-06-01"),
+        # ── GOLD & PRECIOUS METALS ──
+        ("Gold Bars (2kg)", "GLD", "Gold & Precious Metals", 10, 400000, 520000, "Physical gold in vault", "USD", "2019-11-01"),
+        ("Silver Coins (500oz)", "SLV", "Gold & Precious Metals", 500, 12500, 15800, "Collectible silver", "USD", "2020-05-20"),
+        ("Gold Sovereign Bonds", "", "Gold & Precious Metals", 100, 5000000, 6800000, "SGB 2.5% coupon", "INR", "2020-09-01"),
+        # ── LOANS (GIVEN) ──
+        ("Loan to XYZ Corp", "", "Loans (Given)", 1, 500000, 540000, "12% annual, matures 2027", "USD", "2023-01-01"),
+        ("Personal Loan – Family", "", "Loans (Given)", 1, 200000, 200000, "Interest-free, repayable 2028", "USD", "2023-06-01"),
+        ("Bridge Loan – Startup", "", "Loans (Given)", 1, 75000, 78000, "15% convertible note", "USD", "2024-03-01"),
+        # ── ART & COLLECTIBLES ──
+        ("Monet 'Water Lilies' Print", "", "Art & Collectibles", 1, 80000, 135000, "Authenticated, insured at Christie's", "USD", "2018-04-10"),
+        ("Vintage Rolex Daytona 1969", "", "Art & Collectibles", 1, 25000, 52000, "Paul Newman dial, excellent", "USD", "2019-02-15"),
+        ("Wine Collection (Bordeaux)", "", "Art & Collectibles", 48, 36000, 58000, "2005-2015 vintages, temp-controlled", "EUR", "2017-10-01"),
+        ("Rare Stamps Portfolio", "", "Art & Collectibles", 1, 15000, 19500, "British Commonwealth, graded", "GBP", "2016-03-20"),
+        # ── REAL ESTATE ──
+        ("Downtown Office Space, Mumbai", "", "Real Estate", 1, 125000000, 165000000, "Rental ₹4.5L/mo, BKC", "INR", "2015-08-01"),
+        ("Beach Villa, Goa", "", "Real Estate", 1, 65000000, 82000000, "Vacation + Airbnb ₹1.2L/mo", "INR", "2017-12-01"),
+        ("Manhattan Studio Apartment", "", "Real Estate", 1, 650000, 720000, "Rental $3,200/mo, Upper West Side", "USD", "2019-05-15"),
+        ("London Flat, Kensington", "", "Real Estate", 1, 450000, 510000, "Rental £2,800/mo", "GBP", "2018-09-01"),
+        ("Dubai Marina Apartment", "", "Real Estate", 1, 1500000, 1850000, "Rental 8,500 AED/mo", "AED", "2022-03-01"),
+        # ── FIXED INCOME & BONDS ──
+        ("US Treasury Bonds 10Y", "", "Fixed Income & Bonds", 200, 200000, 195000, "4.25% coupon, maturity 2033", "USD", "2022-10-01"),
+        ("Corporate FD (HDFC)", "", "Fixed Income & Bonds", 1, 5000000, 5650000, "7.5% locked 3yr", "INR", "2021-03-01"),
+        ("Vanguard Total Bond ETF", "BND", "Fixed Income & Bonds", 500, 37500, 35800, "Broad bond exposure", "USD", "2023-01-15"),
+        ("SBI Fixed Deposit", "", "Fixed Income & Bonds", 1, 10000000, 11200000, "6.8% 5yr FD", "INR", "2022-06-01"),
+        ("Municipal Bonds (CA)", "", "Fixed Income & Bonds", 100, 100000, 98500, "Tax-exempt, 3.5%", "USD", "2023-04-01"),
+        # ── CASH & EQUIVALENTS ──
+        ("USD Savings (Chase)", "", "Cash & Equivalents", 1, 450000, 450000, "Chase Private Client", "USD", "2020-01-01"),
+        ("INR Current Account", "", "Cash & Equivalents", 1, 8000000, 8000000, "HDFC Bank", "INR", "2020-01-01"),
+        ("EUR Money Market Fund", "", "Cash & Equivalents", 1, 120000, 122400, "HSBC EUR MM", "EUR", "2023-07-01"),
+        ("GBP Savings Account", "", "Cash & Equivalents", 1, 85000, 87500, "Barclays", "GBP", "2022-01-01"),
+        # ── CRYPTOCURRENCY ──
+        ("Bitcoin (BTC)", "BTC-USD", "Cryptocurrency", 3, 90000, 285000, "Cold wallet, Ledger", "USD", "2020-10-15"),
+        ("Ethereum (ETH)", "ETH-USD", "Cryptocurrency", 25, 50000, 45000, "Staked on Lido", "USD", "2021-01-20"),
+        ("Solana (SOL)", "SOL-USD", "Cryptocurrency", 500, 15000, 67500, "DeFi exposure", "USD", "2022-09-01"),
+        # ── HEDGE FUNDS ──
+        ("Bridgewater Pure Alpha II", "", "Hedge Funds", 1, 500000, 545000, "Macro strategy, quarterly liquidity", "USD", "2020-06-01"),
+        ("Citadel Wellington Fund", "", "Hedge Funds", 1, 300000, 378000, "Multi-strategy", "USD", "2021-03-15"),
+        ("Two Sigma Absolute Return", "", "Hedge Funds", 1, 250000, 282500, "Quant strategies", "USD", "2022-01-01"),
+        # ── FOREX MANAGEMENT ──
+        ("USD/INR Forward Contract", "", "Forex Management", 1, 500000, 515000, "Hedging INR exposure, 6mo", "USD", "2024-06-01"),
+        ("EUR/USD Position", "", "Forex Management", 1, 200000, 196000, "Tactical short EUR", "USD", "2024-09-01"),
+        # ── OTHER ASSETS ──
+        ("Patent Portfolio (5 patents)", "", "Other Assets", 5, 150000, 225000, "Tech patents, licensed to 3 firms", "USD", "2019-01-15"),
+        ("Life Insurance (Cash Value)", "", "Other Assets", 1, 200000, 265000, "Whole life, Northwestern Mutual", "USD", "2015-01-01"),
     ]
     for idx, (name, ticker, cat, qty, cost, val, notes, curr, date) in enumerate(assets, 1):
         row = {
@@ -270,11 +323,22 @@ def generate_sample_portfolio() -> pd.DataFrame:
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
 
     liabilities = [
-        ("Home Mortgage", "Mortgage", 1, 1200000, 980000, "4.5% fixed", "USD", "2015-08-01"),
-        ("Office Property Loan", "Business Loan", 1, 500000, 420000, "6% variable", "USD", "2015-08-15"),
-        ("Car Loan", "Personal Loan", 1, 45000, 28000, "EMI $850/mo", "USD", "2022-03-01"),
-        ("AMEX Platinum", "Credit Card Debt", 1, 15000, 15000, "Monthly balance", "USD", "2024-01-01"),
-        ("Margin Loan", "Margin Loan", 1, 50000, 50000, "Interactive Brokers", "USD", "2023-09-01"),
+        # ── MORTGAGES ──
+        ("Primary Home Mortgage", "Mortgage", 1, 1200000, 920000, "4.5% fixed 30yr, Wells Fargo", "USD", "2015-08-01"),
+        ("Mumbai Office Mortgage", "Mortgage", 1, 50000000, 38000000, "8.2% floating, SBI", "INR", "2015-08-01"),
+        ("London Flat Mortgage", "Mortgage", 1, 280000, 195000, "3.8% fixed, HSBC UK", "GBP", "2018-09-01"),
+        # ── BUSINESS LOANS ──
+        ("Office Property Loan", "Business Loan", 1, 500000, 380000, "6% variable, Bank of America", "USD", "2015-08-15"),
+        ("Dubai Property Loan", "Business Loan", 1, 900000, 750000, "5.5% fixed, Emirates NBD", "AED", "2022-03-01"),
+        # ── PERSONAL LOANS ──
+        ("Car Loan (Mercedes S-Class)", "Personal Loan", 1, 85000, 52000, "EMI $1,400/mo, 4.2%", "USD", "2022-03-01"),
+        ("Education Loan", "Personal Loan", 1, 120000, 95000, "3.5% subsidized, Sallie Mae", "USD", "2020-09-01"),
+        # ── CREDIT CARDS ──
+        ("AMEX Centurion", "Credit Card Debt", 1, 25000, 25000, "Monthly revolving balance", "USD", "2024-01-01"),
+        ("HDFC Infinia CC", "Credit Card Debt", 1, 350000, 350000, "Monthly balance", "INR", "2024-06-01"),
+        # ── MARGIN / OTHER ──
+        ("Margin Loan (IBKR)", "Margin Loan", 1, 150000, 150000, "Interactive Brokers, 5.8%", "USD", "2023-09-01"),
+        ("Tax Liability 2025", "Other Liabilities", 1, 180000, 180000, "Estimated federal + state", "USD", "2025-04-15"),
     ]
     for idx, (name, cat, qty, cost, val, notes, curr, date) in enumerate(liabilities, len(assets) + 1):
         row = {

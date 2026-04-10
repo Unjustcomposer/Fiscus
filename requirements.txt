@@ -9,3 +9,6 @@ SQLAlchemy
 scipy
 openpyxl
 reportlab
+torch
+transformers
+scikit-learn

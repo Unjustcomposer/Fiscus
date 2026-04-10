@@ -115,20 +115,30 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None, base_cur
     # Build report
     report = []
 
-    # Calculate NLP Sentiment
-    compound_scores = [analyzer.polarity_scores(h)['compound'] for h in headlines]
-    avg_sentiment = sum(compound_scores) / len(compound_scores) if compound_scores else 0
-    
-    if avg_sentiment > 0.15:
-        sentiment_label = "Bullish 📈"
-    elif avg_sentiment < -0.15:
-        sentiment_label = "Bearish 📉"
-    else:
-        sentiment_label = "Neutral ⚖️"
+    # Calculate NLP Sentiment — Deep Learning (FinBERT) with VADER fallback
+    try:
+        from dl_sentiment import get_analyzer
+        deep_analyzer = get_analyzer()
+        sentiment_data = deep_analyzer.get_market_sentiment(headlines)
+        avg_sentiment = sentiment_data['avg_score']
+        sentiment_label = sentiment_data['label']
+        model_used = sentiment_data['model']
+    except Exception:
+        # Silent fallback to VADER
+        compound_scores = [analyzer.polarity_scores(h)['compound'] for h in headlines]
+        avg_sentiment = sum(compound_scores) / len(compound_scores) if compound_scores else 0
+        if avg_sentiment > 0.15:
+            sentiment_label = "Bullish 📈"
+        elif avg_sentiment < -0.15:
+            sentiment_label = "Bearish 📉"
+        else:
+            sentiment_label = "Neutral ⚖️"
+        model_used = "VADER (Lexicon Fallback)"
 
     # Section 1: News context
     report.append("### 🌐 Global Market Context")
     report.append(f"**Overall NLP Sentiment Score:** {avg_sentiment:.2f} ({sentiment_label})")
+    report.append(f"**Model:** {model_used}")
     report.append("")
     report.append("*Real-time headlines informing this analysis:*")
     for h in headlines:
