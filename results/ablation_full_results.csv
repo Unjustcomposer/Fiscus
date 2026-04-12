@@ -1,0 +1,31 @@
+Config,Description,Ticker,RMSE,MAPE (%),DA (%),Hit Rate (%),Profit Factor,Windows
+naive_baseline,Naive baseline (last close),AAPL,14.9796,5.67,0.0,0.0,0.0,23
+naive_baseline,Naive baseline (last close),TSLA,56.6042,13.23,0.0,0.0,0.0,23
+naive_baseline,Naive baseline (last close),GOOGL,18.8578,7.19,0.0,0.0,0.0,23
+naive_baseline,Naive baseline (last close),JPM,16.4482,4.92,0.0,0.0,0.0,23
+naive_baseline,Naive baseline (last close),GLD,16.8022,3.64,0.0,0.0,0.0,23
+random_walk_baseline,Random Walk baseline,AAPL,15.3633,5.71,65.22,65.22,1.881,23
+random_walk_baseline,Random Walk baseline,TSLA,58.5836,14.22,39.13,39.13,1.2279,23
+random_walk_baseline,Random Walk baseline,GOOGL,18.0648,6.77,65.22,65.22,2.5822,23
+random_walk_baseline,Random Walk baseline,JPM,16.816,5.23,65.22,65.22,2.7438,23
+random_walk_baseline,Random Walk baseline,GLD,14.2822,3.43,65.22,65.22,11.3113,23
+arima_baseline,ARIMA baseline (auto-order),AAPL,15.0539,5.72,52.17,52.17,1.2351,23
+arima_baseline,ARIMA baseline (auto-order),TSLA,56.4996,13.22,47.83,47.83,1.7697,23
+arima_baseline,ARIMA baseline (auto-order),GOOGL,18.9299,7.24,43.48,43.48,0.9134,23
+arima_baseline,ARIMA baseline (auto-order),JPM,16.4209,4.96,34.78,34.78,0.7182,23
+arima_baseline,ARIMA baseline (auto-order),GLD,17.3254,3.82,34.78,34.78,0.3351,23
+mc_only,Monte Carlo standalone,AAPL,15.1649,5.65,65.22,65.22,1.881,23
+mc_only,Monte Carlo standalone,TSLA,57.9526,14.08,39.13,39.13,1.2279,23
+mc_only,Monte Carlo standalone,GOOGL,18.1451,6.74,65.22,65.22,2.5822,23
+mc_only,Monte Carlo standalone,JPM,16.6988,5.25,65.22,65.22,2.7438,23
+mc_only,Monte Carlo standalone,GLD,14.2196,3.4,65.22,65.22,11.3113,23
+ets_only,Exp Smoothing standalone,AAPL,23.5864,9.1,34.78,34.78,0.807,23
+ets_only,Exp Smoothing standalone,TSLA,74.9449,18.67,43.48,43.48,1.0421,23
+ets_only,Exp Smoothing standalone,GOOGL,24.6483,8.42,60.87,60.87,2.495,23
+ets_only,Exp Smoothing standalone,JPM,24.923,8.24,52.17,52.17,0.8031,23
+ets_only,Exp Smoothing standalone,GLD,17.9296,4.62,52.17,52.17,3.5083,23
+full_ensemble,Full ensemble with sentiment gating,AAPL,15.2057,5.67,65.22,65.22,1.881,23
+full_ensemble,Full ensemble with sentiment gating,TSLA,58.3555,14.12,43.48,43.48,2.0916,23
+full_ensemble,Full ensemble with sentiment gating,GOOGL,18.1473,6.78,65.22,65.22,2.5822,23
+full_ensemble,Full ensemble with sentiment gating,JPM,16.6756,5.21,65.22,65.22,2.7438,23
+full_ensemble,Full ensemble with sentiment gating,GLD,14.0739,3.35,65.22,65.22,11.3113,23

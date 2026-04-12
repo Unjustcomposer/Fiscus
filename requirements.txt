@@ -12,3 +12,5 @@ reportlab
 torch
 transformers
 scikit-learn
+statsmodels
+streamlit-authenticator

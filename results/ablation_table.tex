@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{Ablation Study Results}
+\label{tab:model_comparison}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Model} & \textbf{RMSE} & \textbf{MAPE (%)} & \textbf{DA (%)} & \textbf{Hit Rate (%)} & \textbf{Profit Factor} \\
+\midrule
+mc_only & 24.4362 & 7.0240 & 60.0020 & 60.0020 & 3.9492 \\
+full_ensemble & 24.4916 & 7.0260 & 60.8720 & 60.8720 & 4.1220 \\
+random_walk_baseline & 24.6220 & 7.0720 & 60.0020 & 60.0020 & 3.9492 \\
+naive_baseline & 24.7384 & 6.9300 & 0.0000 & 0.0000 & 0.0000 \\
+arima_baseline & 24.8459 & 6.9920 & 42.6080 & 42.6080 & 0.9943 \\
+ets_only & 33.2064 & 9.8100 & 48.6940 & 48.6940 & 1.7311 \\
+\bottomrule
+\end{tabular}
+\end{table}

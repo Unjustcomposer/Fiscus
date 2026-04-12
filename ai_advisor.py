@@ -168,19 +168,50 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None, base_cur
         report.append("🟢 No single asset class exceeds the 30% concentration threshold. Portfolio is well-diversified.")
     report.append("")
 
-    # Section 4: Liquidation candidate
+    # Section 4: Liquidation candidate — Data-Driven Scoring
+    # Score = gain_pct × concentration_pct (higher = stronger sell candidate)
     report.append("### 📉 Liquidation Recommendation")
-    if top_gainer["Gain"] > 0:
-        reason = random.choice(LIQUIDATION_REASONS)
-        gain_pct = (top_gainer["Gain"] / top_gainer["Cost Basis Base"] * 100) if top_gainer["Cost Basis Base"] > 0 else 0
-        report.append(f"**Consider trimming:** {top_gainer['Name']} (*{top_gainer['Category']}*)")
-        report.append(f"- Unrealised Gain: **{sym}{top_gainer['Gain']:,.0f}** ({gain_pct:+.1f}%)")
-        report.append(f"- Rationale: This holding {reason} A 20-30% trim is recommended to lock in profits.")
+    total_asset_val = assets["Current Value Base"].sum()
+    if total_asset_val > 0 and not assets.empty:
+        assets_scored = assets.copy()
+        assets_scored["gain_pct"] = (
+            (assets_scored["Current Value Base"] - assets_scored["Cost Basis Base"])
+            / assets_scored["Cost Basis Base"].replace(0, 1) * 100
+        )
+        assets_scored["concentration_pct"] = (
+            assets_scored["Current Value Base"] / total_asset_val * 100
+        )
+        # Only consider gainers
+        gainers = assets_scored[assets_scored["gain_pct"] > 5].copy()
+        if not gainers.empty:
+            gainers["liquidation_score"] = (
+                gainers["gain_pct"] * gainers["concentration_pct"] / 100
+            )
+            top_candidate = gainers.nlargest(1, "liquidation_score").iloc[0]
+            gain_pct = top_candidate["gain_pct"]
+            conc_pct = top_candidate["concentration_pct"]
+            report.append(f"**Consider trimming:** {top_candidate['Name']} (*{top_candidate['Category']}*)")
+            report.append(f"- Unrealised Gain: **{sym}{top_candidate['Current Value Base'] - top_candidate['Cost Basis Base']:,.0f}** ({gain_pct:+.1f}%)")
+            report.append(f"- Portfolio Concentration: **{conc_pct:.1f}%** of total assets")
+            # Generate specific reason from data
+            reasons = []
+            if gain_pct > 50:
+                reasons.append(f"has achieved outsized gains of {gain_pct:+.0f}% — prime for partial profit-taking")
+            if conc_pct > 10:
+                reasons.append(f"represents {conc_pct:.1f}% of AUM, exceeding the 10% single-asset concentration limit")
+            if gain_pct > 20 and conc_pct > 5:
+                reasons.append("exhibits both high returns and meaningful portfolio weight — risk/reward favors trimming")
+            reason_text = "; ".join(reasons) if reasons else "has performed well and may benefit from profit-taking"
+            report.append(f"- Rationale: This holding {reason_text}. A 20-30% trim is recommended.")
+        else:
+            report.append("No strong liquidation candidates identified. Most positions are near or below cost basis.")
     else:
-        report.append("No strong liquidation candidates identified at this time. Most positions are near or below cost basis.")
+        report.append("No strong liquidation candidates identified at this time.")
     report.append("")
 
-    # Section 5: Investment suggestions
+    # Section 5: Investment suggestions — Portfolio-Gap-Driven
+    # Rank INVESTMENT_IDEAS by which categories have the largest negative
+    # drift from IPS targets, with sentiment-adjusted prioritization.
     report.append("### 📈 Investment Opportunities")
     
     # Mathematical adjustment of text based on sentiment score
@@ -191,9 +222,49 @@ def generate_advisory_report(portfolio_df, headlines: list[str] = None, base_cur
     else:
         report.append(f"With macro sentiment appearing **Neutral** ({avg_sentiment:.2f}), the AI model maintains standard allocation logic. Based on your {sym}{cash:,.0f} available cash:")
     
-    ideas = random.sample(INVESTMENT_IDEAS, 3)
-    for i, inv in enumerate(ideas, 1):
-        report.append(f"{i}. **{inv['name']}** — *{inv['category']}*")
+    # Compute portfolio allocation gaps vs IPS targets
+    try:
+        import target_allocation
+        targets = target_allocation.load_targets()
+        rebal_df = target_allocation.compute_rebalancing(portfolio_df, targets)
+        
+        if not rebal_df.empty:
+            # Get underweight categories (negative drift = need to buy)
+            underweight = rebal_df[rebal_df["Drift %"] < -1.0].sort_values("Drift %")
+            underweight_cats = set(underweight["Category"].tolist())
+        else:
+            underweight_cats = set()
+    except Exception:
+        underweight_cats = set()
+    
+    # Score each investment idea by portfolio gap relevance + sentiment
+    defensive_cats = {"Fixed Income & Bonds", "Gold & Precious Metals", "Cash & Equivalents"}
+    growth_cats = {"Public Equity", "Private Equity", "Cryptocurrency"}
+    
+    scored_ideas = []
+    for idea in INVESTMENT_IDEAS:
+        score = 0.0
+        # Portfolio gap bonus: ideas in underweight categories score higher
+        if idea["category"] in underweight_cats:
+            score += 5.0
+        # Sentiment adjustment
+        if avg_sentiment < -0.15 and idea["category"] in defensive_cats:
+            score += 3.0  # Bearish → prefer defensive
+        elif avg_sentiment > 0.15 and idea["category"] in growth_cats:
+            score += 3.0  # Bullish → prefer growth
+        # Base diversity score
+        score += 1.0
+        scored_ideas.append((score, idea))
+    
+    # Sort by score descending, take top 3
+    scored_ideas.sort(key=lambda x: x[0], reverse=True)
+    top_ideas = [idea for _, idea in scored_ideas[:3]]
+    
+    for i, inv in enumerate(top_ideas, 1):
+        gap_note = ""
+        if inv["category"] in underweight_cats:
+            gap_note = " *(fills portfolio gap)*"
+        report.append(f"{i}. **{inv['name']}** — *{inv['category']}*{gap_note}")
         report.append(f"   > {inv['reason']}")
     report.append("")
 

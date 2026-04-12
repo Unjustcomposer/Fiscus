@@ -181,7 +181,60 @@ class PortfolioAnomalyDetector:
                 X_reconstructed = self.model(X_tensor).cpu().numpy()
             
             errors = np.mean((X_scaled - X_reconstructed) ** 2, axis=1)
-            self.threshold = float(np.mean(errors) + 2 * np.std(errors))
+            
+            # ── F1-Optimal Threshold Calibration ──
+            # Instead of arbitrary μ+2σ, we calibrate using synthetic labels.
+            # An observation is labeled "anomalous" if its source asset had:
+            #   - Excess kurtosis > 5  OR
+            #   - Max drawdown < -20%
+            # We sweep thresholds from P80 to P99 and select argmax F1.
+            
+            # Build synthetic labels from feature vectors
+            kurtosis_idx = feature_names.index('kurtosis') if 'kurtosis' in feature_names else 3
+            drawdown_idx = feature_names.index('max_drawdown') if 'max_drawdown' in feature_names else 4
+            
+            synthetic_labels = np.zeros(len(X))
+            for i in range(len(X)):
+                if X[i, kurtosis_idx] > 5.0 or X[i, drawdown_idx] < -0.20:
+                    synthetic_labels[i] = 1.0
+            
+            # Sweep thresholds for F1 optimization
+            percentiles_to_try = np.arange(80, 100, 1)
+            calibration_curve = []
+            best_f1 = 0.0
+            best_threshold = float(np.mean(errors) + 2 * np.std(errors))  # fallback
+            
+            for pct in percentiles_to_try:
+                thresh_candidate = float(np.percentile(errors, pct))
+                predicted_labels = (errors > thresh_candidate).astype(float)
+                
+                # Compute F1
+                tp = np.sum((predicted_labels == 1) & (synthetic_labels == 1))
+                fp = np.sum((predicted_labels == 1) & (synthetic_labels == 0))
+                fn = np.sum((predicted_labels == 0) & (synthetic_labels == 1))
+                
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+                recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+                f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+                
+                calibration_curve.append({
+                    'percentile': int(pct),
+                    'threshold': round(thresh_candidate, 6),
+                    'precision': round(precision, 4),
+                    'recall': round(recall, 4),
+                    'f1': round(f1, 4),
+                })
+                
+                if f1 > best_f1:
+                    best_f1 = f1
+                    best_threshold = thresh_candidate
+            
+            # If no synthetic anomalies were found, fall back to μ+2σ
+            if np.sum(synthetic_labels) == 0:
+                best_threshold = float(np.mean(errors) + 2 * np.std(errors))
+                best_f1 = 0.0
+            
+            self.threshold = best_threshold
 
             # Compute current score for each ticker
             results = []
@@ -246,7 +299,9 @@ class PortfolioAnomalyDetector:
                 f"Total Parameters: {total_params:,}",
                 f"Training Samples: {len(X)}",
                 f"Feature Dimensions: {input_dim}",
-                f"Anomaly Threshold: {self.threshold:.6f}",
+                f"Anomaly Threshold: {self.threshold:.6f} (F1-calibrated)",
+                f"Calibration F1: {best_f1:.4f}",
+                f"Synthetic Anomalies: {int(np.sum(synthetic_labels))} / {len(synthetic_labels)}",
             ]
 
             return {
@@ -257,6 +312,13 @@ class PortfolioAnomalyDetector:
                 'model_summary': "\n".join(summary_lines),
                 'training_samples': len(X),
                 'tickers_analyzed': len(valid_tickers),
+                'calibration': {
+                    'method': 'F1-optimal threshold sweep (P80-P99)',
+                    'best_f1': round(best_f1, 4),
+                    'synthetic_anomaly_count': int(np.sum(synthetic_labels)),
+                    'total_samples': len(synthetic_labels),
+                    'calibration_curve': calibration_curve,
+                },
             }
 
         except Exception as e:

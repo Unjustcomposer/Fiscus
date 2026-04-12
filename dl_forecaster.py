@@ -151,27 +151,43 @@ def train_and_forecast(ticker: str, forecast_days: int = 30, lookback: int = 60,
         rmse = float(np.sqrt(mse))
         mape = float(np.mean(np.abs((y_test_actual - y_pred_actual) / y_test_actual)) * 100)
 
-        # 5. Forecast future prices (auto-regressive)
-        last_sequence = torch.FloatTensor(scaled[-lookback:].reshape(1, lookback, 1)).to(device)
-        predictions_scaled = []
-
-        current_seq = last_sequence.clone()
+        # 5. Forecast future prices using MC Dropout for uncertainty quantification
+        # Instead of constant ±1.96×RMSE bands, we run N forward passes with
+        # dropout enabled (MC Dropout) to estimate predictive variance.
+        # This produces confidence intervals that naturally widen with horizon.
+        
+        MC_SAMPLES = 50  # Number of Monte Carlo forward passes
+        mc_forecasts = []
+        
+        for mc_run in range(MC_SAMPLES):
+            last_sequence = torch.FloatTensor(scaled[-lookback:].reshape(1, lookback, 1)).to(device)
+            current_seq = last_sequence.clone()
+            run_predictions = []
+            
+            # Enable dropout for MC sampling (key insight: model.train() activates dropout)
+            model.train()
+            with torch.no_grad():
+                for _ in range(forecast_days):
+                    pred = model(current_seq).cpu().numpy()[0, 0]
+                    run_predictions.append(pred)
+                    current_seq = torch.roll(current_seq, -1, dims=1)
+                    current_seq[0, -1, 0] = float(pred)
+            
+            run_prices = scaler.inverse_transform(
+                np.array(run_predictions).reshape(-1, 1)
+            ).flatten()
+            mc_forecasts.append(run_prices)
+        
+        mc_array = np.array(mc_forecasts)  # Shape: (MC_SAMPLES, forecast_days)
+        
+        # MC Dropout estimates
+        predictions = mc_array.mean(axis=0)      # Predictive mean
+        pred_std = mc_array.std(axis=0)           # Predictive std (widens with horizon)
+        upper = predictions + 1.96 * pred_std     # 95% CI upper
+        lower = predictions - 1.96 * pred_std     # 95% CI lower
+        
+        # Switch back to eval for any subsequent use
         model.eval()
-        with torch.no_grad():
-            for _ in range(forecast_days):
-                pred = model(current_seq).cpu().numpy()[0, 0]
-                predictions_scaled.append(pred)
-                # Shift window
-                current_seq = torch.roll(current_seq, -1, dims=1)
-                current_seq[0, -1, 0] = float(pred)
-
-        predictions = scaler.inverse_transform(
-            np.array(predictions_scaled).reshape(-1, 1)
-        ).flatten()
-
-        # Confidence bands
-        upper = predictions + 1.96 * rmse
-        lower = predictions - 1.96 * rmse
 
         # Build forecast DataFrame
         last_date = df.index[-1]

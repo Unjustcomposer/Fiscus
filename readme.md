@@ -1,87 +1,137 @@
 # 🏛️ Family Office Portfolio Dashboard
 
-An industry-grade Family Office Portfolio Dashboard designed to track, analyze, and forecast high-net-worth portfolios. Built with **Python**, **Streamlit**, and **SQLAlchemy**, this data analytics capstone project replaces fragmented spreadsheets with a rigorous mathematical backend, **deep learning engine**, and an intuitive, interactive user interface.
+**An Ensemble Intelligence System for Multi-Asset Portfolio Management**
+
+Integrates LSTM forecasting, transformer-based sentiment analysis (FinBERT), autoencoder anomaly detection, and automatic model selection into a unified decision-support platform for family offices.
 
 ---
 
-## ✨ Key Features
+## 🔬 Research Features
 
-### 📉 Advanced Risk Analytics (Public Equities)
-Calculates real-time financial metrics using `yfinance` and `numpy`:
-- **Sharpe Ratio** & **Beta** (correlated against the S&P 500)
-- **Annualized Volatility**
-- **Historical Value at Risk (VaR 95%)**
-- **Pearson Correlation Heatmap** for visualizing asset co-movement.
+| Feature | Description |
+|---------|-------------|
+| **Walk-Forward Backtesting** | Expanding-window evaluation with monthly rebalance steps over 2-3 years of data |
+| **Baseline Models** | Naive, Random Walk, ARIMA (auto-order), Buy-and-Hold, SMA Crossover |
+| **Evaluation Metrics** | RMSE, MAPE, Directional Accuracy, Hit Rate, Profit Factor, Sharpe, Calmar, Information Ratio |
+| **Statistical Tests** | Paired t-test, Wilcoxon signed-rank, Diebold-Mariano test |
+| **Ablation Studies** | 15 configurations systematically removing components to quantify contribution |
+| **Sentiment-Weighted Ensemble** | FinBERT score dynamically re-weights model ensemble via gating function |
+| **MC Dropout Uncertainty** | 50 stochastic forward passes produce confidence intervals that widen with horizon |
+| **F1-Calibrated Anomaly Detection** | Threshold sweep (P80-P99) with synthetic labels for optimal anomaly sensitivity |
+| **Mathematical Formulations** | All equations documented in LaTeX-exportable format |
 
-### 🔮 Predictive Forecasting (Monte Carlo)
-Features a Geometric Brownian Motion simulator that processes current net worth, expected blended return, and blended volatility to run **10,000 parallel realities** mapping paths over the next 5 to 30 years, returning a percentile-based probability matrix.
+## 🏗️ Architecture
 
-### 🤖 Deep Learning Engine
-A dedicated neural network-powered analytics module featuring three models:
+```
+Family_Office_Portfolio_Tracker/
+├── app.py                    # Main Streamlit dashboard (entry point)
+├── pages/
+│   └── page_backtesting.py   # Walk-forward backtesting & ablation UI
+│
+├── # ── Core Data Layer ──
+├── utils.py                  # Portfolio CRUD, calculations, XIRR
+├── database.py               # SQLAlchemy ORM (SQLite)
+├── market_data.py            # yfinance price fetcher + FX rates
+├── target_allocation.py      # IPS engine & rebalancing
+│
+├── # ── Analytics ──
+├── analytics_engine.py       # Risk metrics, Monte Carlo, Holt's smoothing
+├── ai_advisor.py             # Data-driven advisory (portfolio-gap scoring)
+│
+├── # ── Deep Learning ──
+├── dl_forecaster.py          # LSTM with MC Dropout uncertainty
+├── dl_anomaly.py             # Autoencoder with F1-calibrated threshold
+├── dl_sentiment.py           # FinBERT transformer sentiment analysis
+├── intelligence_engine.py    # Ensemble orchestration + sentiment gating
+│
+├── # ── Research Infrastructure ──
+├── backtesting.py            # Walk-forward backtesting engine
+├── baselines.py              # Baseline models (Naive, RW, ARIMA, B&H, SMA)
+├── evaluation.py             # Metrics suite + statistical significance tests
+├── ablation_runner.py        # Automated ablation study executor
+├── math_formulations.py      # LaTeX-exportable mathematical documentation
+│
+├── # ── Security ──
+├── auth.py                   # streamlit-authenticator login wall
+│
+├── # ── Paper ──
+├── paper/
+│   └── paper_skeleton.tex    # LaTeX paper skeleton (IEEE format)
+│
+└── requirements.txt
+```
 
-#### 📈 LSTM Stock Price Forecasting
-A **stacked LSTM (Long Short-Term Memory)** recurrent neural network built with PyTorch that:
-- Learns temporal price patterns from 2 years of historical data
-- Uses a 60-day sliding window architecture (LSTM 128 → LSTM 64 → Dense 32 → Output)
-- Produces multi-day price forecasts via auto-regressive rollout
-- Displays 95% confidence bands and reports RMSE/MAPE metrics
+## 🚀 Quick Start
 
-#### 📰 Transformer-Based Sentiment Analysis (FinBERT)
-Replaces traditional lexicon-based NLP with a **pre-trained FinBERT transformer** model:
-- Deep neural network fine-tuned on millions of financial documents
-- Understands context, negation, and domain-specific financial language
-- Returns true probability distributions (positive/negative/neutral) per headline
-- Integrated into the AI Advisory report with VADER as silent fallback
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-#### 🔍 Autoencoder Anomaly Detection
-A **deep autoencoder** (symmetric encoder-decoder) that:
-- Extracts 10 statistical features per 30-day rolling window per asset
-- Learns "normal" portfolio behavior patterns during training
-- Flags holdings with high reconstruction error as anomalous risk shifts
-- Color-coded risk levels: 🟢 Normal → 🟠 Watch → 🟡 Elevated → 🔴 Critical
+# Launch dashboard
+streamlit run app.py
+```
 
-### 🧠 NLP-Powered AI Advisory
-Utilizes the `FinBERT` deep learning model (with `vaderSentiment` NLP fallback) to evaluate live financial RSS feeds. The AI calculates an aggregated semantic score (Bullish/Bearish/Neutral) and dynamically adjusts investment recommendations and risk posturing based on global macroeconomic sentiment.
+**Default credentials:** `admin` / `admin123`
 
-### ⚖️ Automated Target Rebalancing
-An Integrated Investment Policy Statement (IPS) engine that compares current asset values against target allocations, delivering exact dollar-value recommendations for required buys and sells to eliminate portfolio drift.
+## 📊 Key Modules
 
-### 💾 Relational Database Backend
-Data is structured and securely stored via an **SQLite** database using **SQLAlchemy** ORM, ensuring high data integrity, quick CRUD operations across physical assets, private equity, and crypto, and a scalable ETL pipeline.
+### Ensemble Forecasting with Sentiment Gating
+The system runs three models simultaneously — **LSTM**, **Monte Carlo GBM**, and **Holt's Exponential Smoothing** — then fuses their predictions using inverse-MAPE weighting modulated by a **FinBERT sentiment gating function**:
 
----
+```
+w_i' = w_i^(base) × g(s, m_i)
 
-## 🚀 Installation & Usage
+g(s, LSTM)          = 1 + 0.3s
+g(s, Monte Carlo)   = 1 - 0.4s  
+g(s, Exp Smoothing) = 1 + 0.5s
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Unjustcomposer/Family_Office_Portfolio_Tracker.git
-   cd Family_Office_Portfolio_Tracker
-   ```
+Where `s ∈ [-1, 1]` is the aggregate FinBERT sentiment score. Bearish sentiment increases Monte Carlo weight (tail risk capture); bullish increases trend-following weights.
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-   > **Note:** PyTorch and Transformers are large packages (~2-3 GB). The first `pip install` will take several minutes. The FinBERT model (~400MB) downloads automatically on first use.
+### Walk-Forward Backtesting
+```python
+from backtesting import WalkForwardBacktester
 
-3. **Run the application**
-   ```bash
-   streamlit run app.py
-   ```
-   *The application will automatically launch in your default web browser at `http://localhost:8501`.*
+bt = WalkForwardBacktester("AAPL", lookback_years=3, forecast_horizon=21)
+results = bt.run(models=['naive', 'arima', 'monte_carlo', 'exp_smoothing'])
+summary = bt.get_summary()         # Per-model metrics
+sig = bt.get_significance_tests()  # Pairwise statistical tests
+```
 
----
+### Ablation Studies
+```python
+from ablation_runner import AblationRunner
 
-## 🛠️ Tech Stack
+runner = AblationRunner(tickers=["AAPL", "MSFT", "NVDA"])
+runner.run_suite(configs=["full_ensemble", "no_sentiment", "naive_baseline"])
+comparison = runner.get_averaged_comparison()  # Averaged across tickers
+```
 
-| Category | Technologies |
-|----------|-------------|
-| **Frontend** | Streamlit, Plotly |
-| **Backend** | Python, SQLAlchemy, SQLite |
-| **Deep Learning** | PyTorch (LSTM, Autoencoder), HuggingFace Transformers (FinBERT) |
-| **Data** | yfinance, pandas, NumPy, scikit-learn |
-| **NLP** | FinBERT (primary), VADER Sentiment (fallback) |
+## 📈 Sample Portfolio
 
----
-*Built as a comprehensive Data Analytics, Finance & Deep Learning project.*
+The dashboard ships with a comprehensive sample portfolio spanning:
+- **13 asset categories** (Public Equity, Private Equity, Real Estate, Gold, Crypto, etc.)
+- **6 currencies** (USD, INR, EUR, GBP, JPY, AED)
+- **55+ holdings** with realistic valuations
+- **11 liability positions** (mortgages, loans, credit cards)
+
+## 🔐 Security
+
+- **Authentication**: streamlit-authenticator with cookie-based sessions
+- **Data Storage**: SQLAlchemy ORM with SQLite (local, encrypted at rest via OS-level encryption)
+- **Input Validation**: Schema validation on CSV imports
+
+## 📄 Citation
+
+```bibtex
+@software{family_office_tracker_2026,
+  title={Ensemble Intelligence for Multi-Asset Portfolio Management},
+  author={[Your Name]},
+  year={2026},
+  url={https://github.com/[your-repo]}
+}
+```
+
+## 📝 License
+
+This project is developed as a semester capstone. All rights reserved.

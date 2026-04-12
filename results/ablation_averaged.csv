@@ -1,0 +1,7 @@
+Config,Description,RMSE,MAPE (%),DA (%),Hit Rate (%),Profit Factor,Windows
+mc_only,Monte Carlo standalone,24.4362,7.024,60.002,60.002,3.9492,23.0
+full_ensemble,Full ensemble with sentiment gating,24.4916,7.026,60.872,60.872,4.122,23.0
+random_walk_baseline,Random Walk baseline,24.622,7.072,60.002,60.002,3.9492,23.0
+naive_baseline,Naive baseline (last close),24.7384,6.93,0.0,0.0,0.0,23.0
+arima_baseline,ARIMA baseline (auto-order),24.8459,6.992,42.608,42.608,0.9943,23.0
+ets_only,Exp Smoothing standalone,33.2064,9.81,48.694,48.694,1.7311,23.0
