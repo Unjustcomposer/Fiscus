@@ -1,4 +1,4 @@
-# 🏛️ Family Office Portfolio Dashboard
+# 🏛️ fiscus Dashboard
 
 **An Ensemble Intelligence System for Multi-Asset Portfolio Management**
 
