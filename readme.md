@@ -1,8 +1,12 @@
 # 🏛️ fiscus Dashboard
 
-**An Ensemble Intelligence System for Multi-Asset Portfolio Management**
+**An Executive-Grade Multi-Asset Portfolio Management & Intelligence System**
 
-Integrates LSTM forecasting, transformer-based sentiment analysis (FinBERT), autoencoder anomaly detection, and automatic model selection into a unified decision-support platform for family offices.
+## 🎯 Executive Summary
+
+Managing a family office portfolio inherently involves fragmented data across disparate asset classes, geographies, and currencies. Traditional tools fail to provide a unified, real-time view of true Net Worth while simultaneously missing out on data-driven forecasting. 
+
+**Fiscus** solves this exact financial problem by consolidating complex, multi-currency asset classes—ranging from public equities and private equity to real estate and art—into a single, stakeholder-ready view. Beyond aggregation, Fiscus serves as a decision-support engine. It leverages automated ETL pipelines to normalize global asset data and employs an ensemble of machine learning models (LSTM, Autoencoders, NLP) to filter raw market noise into actionable, confidence-rated investment signals.
 
 ---
 
@@ -20,7 +24,49 @@ Integrates LSTM forecasting, transformer-based sentiment analysis (FinBERT), aut
 | **F1-Calibrated Anomaly Detection** | Threshold sweep (P80-P99) with synthetic labels for optimal anomaly sensitivity |
 | **Mathematical Formulations** | All equations documented in LaTeX-exportable format |
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Data Flow
+
+```mermaid
+graph TD
+    %% ETL Pipeline
+    subgraph Data Layer: Automated ETL Pipeline
+        A1[Raw Market Data<br>yfinance / FX Rates] --> B[Data Normalization]
+        A2[Manual Entry / CSV Import<br>Illiquid Assets] --> B
+        B --> C[Base Currency Conversion<br>Real-time FX]
+        C --> D[(SQLAlchemy ORM<br>Portfolio Database)]
+    end
+
+    %% ML Pipeline
+    subgraph Intelligence Layer: Multi-Model ML Pipeline
+        D --> E{Feature Extraction}
+        
+        %% Models
+        E --> F1[LSTM Neural Net<br>Non-linear Trends]
+        E --> F2[Monte Carlo GBM<br>Stochastic Pathways]
+        E --> F3[Holt's Smoothing<br>Exponential Trend]
+        E --> F4[Autoencoder<br>Anomaly Detection]
+        
+        %% NLP
+        G[Real-time News RSS] --> H[FinBERT Transformer<br>Sentiment Analysis]
+        H --> I[Sentiment Gating Function]
+        
+        %% Fusion
+        F1 & F2 & F3 --> J[Ensemble Orchestrator]
+        I -. Modulates Weights .-> J
+        J --> K[Confidence-Rated Signal<br>BUY / SELL / HOLD]
+    end
+
+    %% Presentation
+    subgraph Presentation Layer
+        D --> L1[Net Worth Aggregation]
+        F4 --> L2[Risk Alerts]
+        K --> L3[Strategic Advisory]
+        
+        L1 & L2 & L3 --> UI[Streamlit Dashboard<br>Stakeholder View]
+    end
+```
+
+### Directory Structure
 
 ```
 Family_Office_Portfolio_Tracker/
