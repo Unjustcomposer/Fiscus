@@ -2,11 +2,13 @@
 
 **An Executive-Grade Multi-Asset Portfolio Management & Intelligence System**
 
-## 🎯 Executive Summary
+![Fiscus Dashboard UI](assets/dashboard_mockup.jpg)
 
-Managing a family office portfolio inherently involves fragmented data across disparate asset classes, geographies, and currencies. Traditional tools fail to provide a unified, real-time view of true Net Worth while simultaneously missing out on data-driven forecasting. 
+## 🎯 Executive Summary (The Business Problem)
 
-**Fiscus** solves this exact financial problem by consolidating complex, multi-currency asset classes—ranging from public equities and private equity to real estate and art—into a single, stakeholder-ready view. Beyond aggregation, Fiscus serves as a decision-support engine. It leverages automated ETL pipelines to normalize global asset data and employs an ensemble of machine learning models (LSTM, Autoencoders, NLP) to filter raw market noise into actionable, confidence-rated investment signals.
+Family offices and private wealth managers struggle with a critical blind spot: the inability to view real-time, cross-currency asset performance in one centralized place. When capital is fragmented across illiquid private equity, volatile crypto, foreign real estate, and public equities, assessing true Net Worth and concentrated risk becomes a massive operational bottleneck. 
+
+**Fiscus** is built to solve this exact problem. It optimizes portfolio management by consolidating these disparate, multi-currency asset classes into a single, stakeholder-ready view. By automating data pipelines and normalizing FX rates in real-time, Fiscus eliminates the manual spreadsheet overhead. Furthermore, it leverages an ensemble of machine learning models (LSTM, Autoencoders, NLP) to filter raw market noise into actionable, confidence-rated investment signals, effectively upgrading traditional tracking into a proactive decision-support engine.
 
 ---
 
